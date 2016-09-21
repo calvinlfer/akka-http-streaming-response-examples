@@ -1,6 +1,6 @@
 package com.experiments.calvin
 
-import akka.actor.Props
+import akka.actor.{ActorLogging, Props}
 import akka.stream.actor.ActorPublisher
 import akka.stream.actor.ActorPublisherMessage.{Cancel, Request}
 import com.experiments.calvin.BackpressuredActor._
@@ -21,8 +21,9 @@ object BackpressuredActor {
 
 /**
   * An actor that publishes StringHasBeenSplit messages and respects backpressure
+  * Credits: http://doc.akka.io/docs/akka/2.4.10/scala/stream/stream-integrations.html#ActorPublisher
   */
-class BackpressuredActor extends ActorPublisher[StringHasBeenSplit]{
+class BackpressuredActor extends ActorPublisher[StringHasBeenSplit] with ActorLogging {
   val MaxBufferSize = 100
   var buffer = Vector.empty[StringHasBeenSplit]
 
@@ -48,6 +49,7 @@ class BackpressuredActor extends ActorPublisher[StringHasBeenSplit]{
 
   override def receive: Receive = {
     case ss: SplitString if buffer.size == MaxBufferSize =>
+      log.warning("received a SplitString message when the buffer is maxed out")
       sender() ! CommandDenied
 
     case ss: SplitString =>
@@ -73,6 +75,11 @@ class BackpressuredActor extends ActorPublisher[StringHasBeenSplit]{
     // When the stream subscriber cancels the subscription the ActorPublisherMessage.Cancel message is
     // delivered to this actor. If the actor is stopped the stream will be completed, unless it was not
     // already terminated with failure, completed or canceled.
-    case Cancel => context.stop(self)
+    case Cancel =>
+      log.info("Stream was cancelled")
+      context.stop(self)
+
+    case other =>
+      log.warning(s"Error: Unknown message $other received")
   }
 }
