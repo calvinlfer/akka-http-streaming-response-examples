@@ -13,13 +13,14 @@ import com.experiments.calvin.BackpressuredActor.{SplitString, StringHasBeenSpli
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Random
 
 trait ChunkedStreamingRoutes {
   implicit val actorSystem: ActorSystem
-  implicit val executionContext: ExecutionContext
   implicit val streamMaterializer: ActorMaterializer
-  val httpStreamingRoutes = streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor
+  implicit val executionContext: ExecutionContext
+  lazy val httpStreamingRoutes = streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor
 
   def streamingTextRoute =
     path("streaming-text") {

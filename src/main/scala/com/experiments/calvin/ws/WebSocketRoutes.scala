@@ -1,13 +1,18 @@
 package com.experiments.calvin.ws
 
+import akka.NotUsed
+import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
-import akka.stream.scaladsl.Flow
+import akka.stream.OverflowStrategy
+import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import scala.language.postfixOps
 
 trait WebSocketRoutes {
-  val wsRoutes = websocketRoute
+  val actorSystem: ActorSystem
+  lazy val chatRoom = actorSystem.actorOf(Props[ChatRoom], "chat-room")
+  lazy val wsRoutes = websocketRoute ~ wsChatRoute
 
   // Note: see http://blog.scalac.io/2015/07/30/websockets-server-with-akka-http.html for something way more complex
   def websocketRoute =
@@ -20,4 +25,56 @@ trait WebSocketRoutes {
       handleWebSocketMessages(echoFlow)
     }
   }
+
+  private def newUser(): Flow[Message, Message, NotUsed] = {
+    // create a user actor per websocket connection that is able to talk to the chat room
+    val connectedWsActor = actorSystem.actorOf(ConnectedUser.props(chatRoom))
+
+    // Think about this differently - in the normal case for a stateless Flow, we have incoming messages coming from
+    // the WS client and outgoing messages going to the WS client
+    // Here incomingMessages appears to be modelled as a Sink, the idea is that any messages being sent on a Source
+    // connected to this Sink need to go to an actor (the Source being the WebSocket client)
+    val incomingMessages: Sink[Message, NotUsed] =
+      Flow[Message].map {
+        case TextMessage.Strict(text) => ConnectedUser.IncomingMessage(text)
+      }.to(Sink.actorRef(connectedWsActor, PoisonPill))
+
+    // Here outgoingMessages appear to be modelled as a Source, the idea is that any messages being sent by the actor
+    // (representing the WS client) needs to be sent to the actual WS client over the websocket (being the Sink)
+    val outgoingMessages: Source[Message, NotUsed] =
+      Source
+        .actorRef[ConnectedUser.OutgoingMessage](10, OverflowStrategy.fail)
+        .mapMaterializedValue { outgoingActor =>
+          // you need to send a Connected message to get the actor in a state
+          // where it's ready to receive and send messages
+          connectedWsActor ! ConnectedUser.Connected(outgoingActor)
+          NotUsed
+        }
+        .map {
+          // Domain Model => Websocket Message
+          case ConnectedUser.OutgoingMessage(text) => TextMessage(text)
+        }
+
+    /*
+    We create a flow from the Sink and Source - it's this that makes sense because here incoming messages are coming
+    from the WS Client and being sent to the WS Actor and eventually the chat room and the out going messages that are
+    coming from the WS actor are being sent over the websocket this follows the same idea as the stateless Flow
+    (incoming from websocket client -> outgoing to websocket client)
+
+    Above, we see that messages coming into the flow are received by the Sink and we use actors to emit messages to
+    the source
+
+    To me, the inside of a Flow looks like this
+                                                     ____________________
+                                                    |                    |
+     websocket source    ---------------------------| Sink        Source | ----------------------- websocket sink
+    (incoming messages)                             |____________________|                        (outgoing messages)
+     */
+    Flow.fromSinkAndSource(incomingMessages, outgoingMessages)
+  }
+
+  def wsChatRoute =
+    path("ws-chat") {
+      handleWebSocketMessages(newUser())
+    }
 }
