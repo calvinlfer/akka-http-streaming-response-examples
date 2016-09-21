@@ -5,7 +5,10 @@ import akka.stream.actor.ActorPublisher
 import akka.stream.actor.ActorPublisherMessage.{Cancel, Request}
 import com.experiments.calvin.BackpressuredActor._
 
+import scala.concurrent.duration._
 import scala.annotation.tailrec
+import scala.language.postfixOps
+import scala.util.Random
 
 object BackpressuredActor {
   sealed trait Command
@@ -26,6 +29,8 @@ object BackpressuredActor {
 class BackpressuredActor extends ActorPublisher[StringHasBeenSplit] with ActorLogging {
   val MaxBufferSize = 100
   var buffer = Vector.empty[StringHasBeenSplit]
+  implicit val ec = context.dispatcher
+  val cancellable = context.system.scheduler.schedule(0 seconds, 100 milliseconds, self, SplitString(s"Hello! ${Random.nextString(10)}"))
 
   @tailrec
   private def deliverBuffer(): Unit =
@@ -77,6 +82,7 @@ class BackpressuredActor extends ActorPublisher[StringHasBeenSplit] with ActorLo
     // already terminated with failure, completed or canceled.
     case Cancel =>
       log.info("Stream was cancelled")
+      cancellable.cancel()
       context.stop(self)
 
     case other =>

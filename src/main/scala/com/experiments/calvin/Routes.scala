@@ -20,7 +20,9 @@ trait Routes {
   implicit val actorSystem: ActorSystem
   implicit val executionContext: ExecutionContext
   implicit val streamMaterializer: ActorMaterializer
-  val allRoutes = streamingTextRoute ~ actorStreamingTextRoute ~ websocketRoute
+  val httpStreamingRoutes = streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor
+  val wsRoutes = websocketRoute
+  val allRoutes = httpStreamingRoutes ~ wsRoutes
 
   def streamingTextRoute =
     path("streaming-text") {
@@ -42,17 +44,41 @@ trait Routes {
   def actorStreamingTextRoute =
   path("actor-text") {
     get {
-      // create our Backpressured actor
-      val actorRef = actorSystem.actorOf(BackpressuredActor.props)
-      // wrap it in a ActorPublisher that will act as a Source[StringHasBeenSplit, _]
-      val publisher = ActorPublisher[StringHasBeenSplit](actorRef)
-      val source = Source.fromPublisher(publisher).mapConcat(ss => ss.list).map(s => ByteString(s + "\n"))
-      // send messages into the Stream by sending messages to the actor ref will translate into downstream messages
-      actorSystem.scheduler.schedule(0 seconds, 100 milliseconds, actorRef, SplitString(s"Hello! ${Random.nextString(10)}"))
-
+      val source = Source.actorPublisher[StringHasBeenSplit](BackpressuredActor.props)
+        .mapConcat(ss => ss.list)
+        .map(s => ByteString(s + "\n"))
       complete(HttpEntity(`text/plain(UTF-8)`, source))
     }
   }
+
+  def altActorStreamingTextRoute =
+    path("alt-actor-text") {
+      get {
+        // in addition to sending events through the scheduler inside the actor
+        val source = Source.actorPublisher[StringHasBeenSplit](BackpressuredActor.props)
+            .map(s => ByteString(s + "\n"))
+            .mapMaterializedValue(ref => {
+              actorSystem.scheduler.schedule(0 seconds, 500 milliseconds, ref, SplitString("Calvin says hi"))
+              ref
+            })
+        complete(HttpEntity(`text/plain(UTF-8)`, source))
+      }
+    }
+
+  def actorStreamingTextRouteWithLiveActor =
+    path("live-actor-text") {
+      get {
+        // create our Backpressured actor
+        val actorRef = actorSystem.actorOf(BackpressuredActor.props)
+        // wrap it in a ActorPublisher that will act as a Source[StringHasBeenSplit, _]
+        val publisher = ActorPublisher[StringHasBeenSplit](actorRef)
+        val source = Source.fromPublisher(publisher).map(s => ByteString(s + "\n"))
+        // send messages into the Stream by sending messages to the actor ref will translate into downstream messages
+        actorSystem.scheduler.schedule(0 seconds, 100 milliseconds, actorRef, SplitString(s"Hello! ${Random.nextString(10)}"))
+
+        complete(HttpEntity(`text/plain(UTF-8)`, source))
+      }
+    }
 
   // Note: see http://blog.scalac.io/2015/07/30/websockets-server-with-akka-http.html for something way more complex
   def websocketRoute =
