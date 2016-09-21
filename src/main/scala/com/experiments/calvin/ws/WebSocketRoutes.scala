@@ -46,7 +46,8 @@ trait WebSocketRoutes {
         .actorRef[ConnectedUser.OutgoingMessage](10, OverflowStrategy.fail)
         .mapMaterializedValue { outgoingActor =>
           // you need to send a Connected message to get the actor in a state
-          // where it's ready to receive and send messages
+          // where it's ready to receive and send messages, we used the mapMaterialized value
+          // so we can get access to it as soon as this is materialized
           connectedWsActor ! ConnectedUser.Connected(outgoingActor)
           NotUsed
         }
@@ -64,7 +65,8 @@ trait WebSocketRoutes {
     Above, we see that messages coming into the flow are received by the Sink and we use actors to emit messages to
     the source
 
-    To me, the inside of a Flow looks like this
+    To me, the inside of a Flow looks like this:
+                                                             Flow
                                                      ____________________
                                                     |                    |
      websocket source    ---------------------------| Sink        Source | ----------------------- websocket sink
