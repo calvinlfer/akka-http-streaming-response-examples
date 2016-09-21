@@ -52,6 +52,7 @@ trait Routes {
       }
     }
 
+  // Note: see http://blog.scalac.io/2015/07/30/websockets-server-with-akka-http.html for something way more complex
   def websocketRoute =
     path("ws-simple") {
       get {
