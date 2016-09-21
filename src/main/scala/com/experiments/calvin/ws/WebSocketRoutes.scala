@@ -66,11 +66,14 @@ trait WebSocketRoutes {
     the source
 
     To me, the inside of a Flow looks like this:
-                                                             Flow
-                                                     ____________________
-                                                    |                    |
-     websocket source    ---------------------------| Sink        Source | ----------------------- websocket sink
-    (incoming messages)                             |____________________|                        (outgoing messages)
+                                                                                                                      Flow
+                                                    ______________________________________________________________________________________________________________________________________
+                                                   |                                                                                                                                      |
+     websocket source   ---------------------------| Sink (WebSocket Actor sending message to ConnectedUserActor)           Source (ConnectedUserActor sending message to WebSocket Actor | ----------------------- websocket sink
+                                                   |                                                                                                                                      |
+                                                   | Accomplished using Sink.actorRef, any information emitted on           Accomplished using Source.actorRef, any OutgoingMessage sent  |
+                                                   | the Stream will end up at the ConnectedUserActor                       to the materialized Actor will be emitted on the Stream       |
+    (incoming messages)                            |______________________________________________________________________________________________________________________________________|                        (outgoing messages)
      */
     Flow.fromSinkAndSource(incomingMessages, outgoingMessages)
   }
