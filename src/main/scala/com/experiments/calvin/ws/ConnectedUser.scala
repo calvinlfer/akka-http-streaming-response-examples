@@ -1,5 +1,5 @@
 package com.experiments.calvin.ws
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import com.experiments.calvin.ws.ChatRoom.{ChatMessage, JoinRoom}
 import com.experiments.calvin.ws.ConnectedUser.{Connected, IncomingMessage, OutgoingMessage}
 
@@ -7,6 +7,8 @@ import com.experiments.calvin.ws.ConnectedUser.{Connected, IncomingMessage, Outg
   * This actor represents a connected user over a websocket connection and acts as a bridge between the WS Actor and
   * the Chat Room. It is responsible for managing incoming messages from the WS actor and messaging being delivered
   * from the Chat Room to the WS actor
+  *
+  * Note: The WS Actor sends a PoisonPill to this actor which makes it go away when the WebSocket Client has left
   */
 class ConnectedUser(chatRoom: ActorRef) extends Actor with ActorLogging {
   override def receive: Receive = waiting
@@ -14,19 +16,21 @@ class ConnectedUser(chatRoom: ActorRef) extends Actor with ActorLogging {
   def waiting: Receive = {
     // When the user connects, tell the chat room about it so messages
     // sent to the chat room are routed here
-    case Connected(outgoing) =>
-      log.info(s"WS user: $outgoing has connected")
-      context become connected(outgoing)
+    case Connected(wsActor) =>
+      log.info(s"WS user: $wsActor has connected")
+      context become connected(wsActor)
       chatRoom ! JoinRoom
   }
 
   def connected(wsUser: ActorRef): Receive = {
     // any messages coming from the user on the websocket will be sent to the chat room
     case IncomingMessage(text) =>
+      log.debug("Intermediate Actor sending message to chat room")
       chatRoom ! ChatMessage(text)
 
     // any messages coming from the chat room need to be sent to the websocket user
     case ChatMessage(message) =>
+      log.debug(s"Intermediate Actor sending message that came from the chat room to $wsUser")
       wsUser ! OutgoingMessage(message)
   }
 }

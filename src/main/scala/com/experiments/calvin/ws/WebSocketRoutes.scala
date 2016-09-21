@@ -9,6 +9,10 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import scala.language.postfixOps
 
+/**
+  * WebSocket routes
+  * Note: if you do not send anything for over 1 minute then the connection will be closed
+  */
 trait WebSocketRoutes {
   val actorSystem: ActorSystem
   lazy val chatRoom = actorSystem.actorOf(Props[ChatRoom], "chat-room")
@@ -27,7 +31,7 @@ trait WebSocketRoutes {
   }
 
   private def newUser(): Flow[Message, Message, NotUsed] = {
-    // create a user actor per websocket connection that is able to talk to the chat room
+    // create a user actor per webSocket connection that is able to talk to the chat room
     val connectedWsActor = actorSystem.actorOf(ConnectedUser.props(chatRoom))
 
     // Think about this differently - in the normal case for a stateless Flow, we have incoming messages coming from
@@ -52,15 +56,15 @@ trait WebSocketRoutes {
           NotUsed
         }
         .map {
-          // Domain Model => Websocket Message
+          // Domain Model => WebSocket Message
           case ConnectedUser.OutgoingMessage(text) => TextMessage(text)
         }
 
     /*
     We create a flow from the Sink and Source - it's this that makes sense because here incoming messages are coming
     from the WS Client and being sent to the WS Actor and eventually the chat room and the out going messages that are
-    coming from the WS actor are being sent over the websocket this follows the same idea as the stateless Flow
-    (incoming from websocket client -> outgoing to websocket client)
+    coming from the WS actor are being sent over the WebSocket this follows the same idea as the stateless Flow
+    (incoming from WebSocket client -> outgoing to WebSocket client)
 
     Above, we see that messages coming into the flow are received by the Sink and we use actors to emit messages to
     the source
@@ -69,7 +73,7 @@ trait WebSocketRoutes {
                                                                                                                       Flow
                                                     ______________________________________________________________________________________________________________________________________
                                                    |                                                                                                                                      |
-     websocket source   ---------------------------| Sink (WebSocket Actor sending message to ConnectedUserActor)           Source (ConnectedUserActor sending message to WebSocket Actor | ----------------------- websocket sink
+     WebSocket Source   ->->->->->->->->->->->->->-| Sink (WebSocket Actor sending message to ConnectedUserActor)           Source (ConnectedUserActor sending message to WebSocket Actor |->->->->->->->->->->->-> WebSocket Sink
                                                    |                                                                                                                                      |
                                                    | Accomplished using Sink.actorRef, any information emitted on           Accomplished using Source.actorRef, any OutgoingMessage sent  |
                                                    | the Stream will end up at the ConnectedUserActor                       to the materialized Actor will be emitted on the Stream       |
@@ -78,6 +82,7 @@ trait WebSocketRoutes {
     Flow.fromSinkAndSource(incomingMessages, outgoingMessages)
   }
 
+  // Credits: http://markatta.com/codemonkey/blog/2016/04/18/chat-with-akka-http-websockets/
   def wsChatRoute =
     path("ws-chat") {
       handleWebSocketMessages(newUser())
