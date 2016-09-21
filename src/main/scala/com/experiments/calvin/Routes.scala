@@ -2,6 +2,7 @@ package com.experiments.calvin
 
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.HttpEntity
+import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, ThrottleMode}
@@ -13,7 +14,7 @@ import scala.language.postfixOps
 
 trait Routes {
   implicit val streamMaterializer: ActorMaterializer
-  val allRoutes = streamingTextRoute ~ actorStreamingTextRoute
+  val allRoutes = streamingTextRoute ~ actorStreamingTextRoute ~ websocketRoute
 
   def streamingTextRoute =
     path("streaming-text") {
@@ -48,6 +49,17 @@ trait Routes {
         // the Actor Ref, then messages show up but as of now, this does not work
         // It will just show nothing, because we can't put any messages in the Stream
         complete(HttpEntity(`text/plain(UTF-8)`, source))
+      }
+    }
+
+  def websocketRoute =
+    path("ws-simple") {
+      get {
+        val echoService: Flow[Message, Message, _] = Flow[Message].map {
+          case TextMessage.Strict(text) => TextMessage(s"I got your message: $text!")
+          case _ => TextMessage(s"Sorry I didn't quite get that")
+        }
+        handleWebSocketMessages(echoService)
       }
     }
 }
