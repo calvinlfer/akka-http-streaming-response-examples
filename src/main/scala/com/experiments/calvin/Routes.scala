@@ -55,11 +55,11 @@ trait Routes {
   def websocketRoute =
     path("ws-simple") {
       get {
-        val echoService: Flow[Message, Message, _] = Flow[Message].map {
+        val echoFlow: Flow[Message, Message, _] = Flow[Message].map {
           case TextMessage.Strict(text) => TextMessage(s"I got your message: $text!")
           case _ => TextMessage(s"Sorry I didn't quite get that")
         }
-        handleWebSocketMessages(echoService)
+        handleWebSocketMessages(echoFlow)
       }
     }
 }
