@@ -1,28 +1,25 @@
-package com.experiments.calvin
+package com.experiments.calvin.chunked.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
 import akka.stream.actor.ActorPublisher
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.Source
 import akka.stream.{ActorMaterializer, ThrottleMode}
 import akka.util.ByteString
+import com.experiments.calvin.BackpressuredActor
 import com.experiments.calvin.BackpressuredActor.{SplitString, StringHasBeenSplit}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.Random
 
-trait Routes {
+trait ChunkedStreamingRoutes {
   implicit val actorSystem: ActorSystem
   implicit val executionContext: ExecutionContext
   implicit val streamMaterializer: ActorMaterializer
   val httpStreamingRoutes = streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor
-  val wsRoutes = websocketRoute
-  val allRoutes = httpStreamingRoutes ~ wsRoutes
 
   def streamingTextRoute =
     path("streaming-text") {
@@ -56,11 +53,11 @@ trait Routes {
       get {
         // in addition to sending events through the scheduler inside the actor
         val source = Source.actorPublisher[StringHasBeenSplit](BackpressuredActor.props)
-            .map(s => ByteString(s + "\n"))
-            .mapMaterializedValue(ref => {
-              actorSystem.scheduler.schedule(0 seconds, 500 milliseconds, ref, SplitString("Calvin says hi"))
-              ref
-            })
+          .map(s => ByteString(s + "\n"))
+          .mapMaterializedValue(ref => {
+            actorSystem.scheduler.schedule(0 seconds, 500 milliseconds, ref, SplitString("Calvin says hi"))
+            ref
+          })
         complete(HttpEntity(`text/plain(UTF-8)`, source))
       }
     }
@@ -79,16 +76,4 @@ trait Routes {
         complete(HttpEntity(`text/plain(UTF-8)`, source))
       }
     }
-
-  // Note: see http://blog.scalac.io/2015/07/30/websockets-server-with-akka-http.html for something way more complex
-  def websocketRoute =
-  path("ws-simple") {
-    get {
-      val echoFlow: Flow[Message, Message, _] = Flow[Message].map {
-        case TextMessage.Strict(text) => TextMessage(s"I got your message: $text!")
-        case _ => TextMessage(s"Sorry I didn't quite get that")
-      }
-      handleWebSocketMessages(echoFlow)
-    }
-  }
 }
