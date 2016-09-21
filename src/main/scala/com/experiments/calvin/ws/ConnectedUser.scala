@@ -5,7 +5,8 @@ import com.experiments.calvin.ws.ConnectedUser.{Connected, IncomingMessage, Outg
 
 /**
   * This actor represents a connected user over a websocket connection and acts as a bridge between the WS Actor and
-  * the Chat Room
+  * the Chat Room. It is responsible for managing incoming messages from the WS actor and messaging being delivered
+  * from the Chat Room to the WS actor
   */
 class ConnectedUser(chatRoom: ActorRef) extends Actor with ActorLogging {
   override def receive: Receive = waiting
