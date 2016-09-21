@@ -4,7 +4,8 @@ import com.experiments.calvin.ws.ChatRoom.{ChatMessage, JoinRoom}
 import com.experiments.calvin.ws.ConnectedUser.{Connected, IncomingMessage, OutgoingMessage}
 
 /**
-  * This actor represents a connected user over a websocket connection
+  * This actor represents a connected user over a websocket connection and acts as a bridge between the WS Actor and
+  * the Chat Room
   */
 class ConnectedUser(chatRoom: ActorRef) extends Actor with ActorLogging {
   override def receive: Receive = waiting
