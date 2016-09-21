@@ -85,7 +85,9 @@ class BackpressuredActor extends ActorPublisher[StringHasBeenSplit] with ActorLo
       cancellable.cancel()
       context.stop(self)
 
+    case CommandAccepted => ()
+
     case other =>
-      log.warning(s"Error: Unknown message $other received")
+      log.warning(s"Unknown message $other received")
   }
 }
