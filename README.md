@@ -18,6 +18,7 @@ browsers since we allocate an actor per request
 to access the materialized ActorRef and schedules messages to be sent constantly (in addition to the scheduler sending messages inside the Actor)
 - [`live-actor-text`](https://github.com/calvinlfer/akka-http-streaming-response-examples/blob/master/src/main/scala/com/experiments/calvin/chunked/http/ChunkedStreamingRoutes.scala#L67) - This is slightly different from the other `actor` endpoints. 
 It creates a live actor and places it into a Publisher and creates a Source from this. We publish messages in the same way as the previous examples
+- [`streaming-json`](https://github.com/calvinlfer/akka-http-streaming-response-examples/blob/master/src/main/scala/com/experiments/calvin/chunked/http/ChunkedStreamingRoutes.scala#L98) - This is an example of a JSON streaming route. We define a JSON Marshaller for a case class [here](https://github.com/calvinlfer/akka-http-streaming-response-examples/blob/master/src/main/scala/com/experiments/calvin/DetailedMessage.scala) and we add a few imports for [streaming support](https://github.com/calvinlfer/akka-http-streaming-response-examples/blob/master/src/main/scala/com/experiments/calvin/chunked/http/ChunkedStreamingRoutes.scala#L92) in order to have streaming JSON. You can customize the separators as well. 
 
 Focusing on the WebSocket Routes:
 
@@ -28,7 +29,6 @@ for his excellent work and explanations on setting this up. This example involve
 to help you understand how this works. Essentially a Flow can be modelled as a Sink and a Source underneath the hood as illustrated by the diagram. If you choose to go 
 about thinking in this manner then you have full control over the Flow (as in what the Flow accepts and what the Flow emits). We use Actors underneath the hood to perform
 the coordination between the accepting and emitting of Flow controlling messages to and from WebSocket clients. 
-
 
 ## Chat Room Flow construction Overview ##
 WebSocket Clients connect to the Chat-Room via `ws://localhost:9000/ws-chat` and a Flow is created. Let's take a look at the inner workings of this Flow:
