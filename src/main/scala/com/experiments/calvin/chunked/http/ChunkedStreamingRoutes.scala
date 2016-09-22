@@ -1,14 +1,17 @@
 package com.experiments.calvin.chunked.http
 
+import java.util.UUID
+
 import akka.actor.ActorSystem
+import akka.http.scaladsl.common.EntityStreamingSupport
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.stream.actor.ActorPublisher
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.{ActorMaterializer, ThrottleMode}
 import akka.util.ByteString
-import com.experiments.calvin.BackpressuredActor
+import com.experiments.calvin.{BackpressuredActor, DetailedMessage}
 import com.experiments.calvin.BackpressuredActor.{SplitString, StringHasBeenSplit}
 
 import scala.concurrent.ExecutionContext
@@ -20,7 +23,9 @@ trait ChunkedStreamingRoutes {
   implicit val actorSystem: ActorSystem
   implicit val streamMaterializer: ActorMaterializer
   implicit val executionContext: ExecutionContext
-  lazy val httpStreamingRoutes = streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor
+  lazy val httpStreamingRoutes =
+    streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor ~
+      streamingJsonRoute
 
   def streamingTextRoute =
     path("streaming-text") {
@@ -75,6 +80,29 @@ trait ChunkedStreamingRoutes {
         actorSystem.scheduler.schedule(0 seconds, 100 milliseconds, actorRef, SplitString(s"Hello! ${Random.nextString(10)}"))
 
         complete(HttpEntity(`text/plain(UTF-8)`, source))
+      }
+    }
+
+
+  val start = ByteString.empty
+  val sep = ByteString("\n")
+  val end = ByteString.empty
+
+  import com.experiments.calvin.DetailMessageJsonProtocol._
+  implicit val jsonStreamingSupport = EntityStreamingSupport.json()
+    .withFramingRenderer(Flow[ByteString].intersperse(start, sep, end))
+
+  // More customization:
+  // http://doc.akka.io/docs/akka/2.4.10/scala/http/routing-dsl/source-streaming-support.html#Customising_response_rendering_mode
+  def streamingJsonRoute =
+    path("streaming-json") {
+      get {
+        val sourceOfNumbers = Source(1 to 1000000)
+        val sourceOfDetailedMessages =
+          sourceOfNumbers.map(num => DetailedMessage(UUID.randomUUID(), s"Hello $num"))
+            .throttle(elements = 1000, per = 1 second, maximumBurst = 1, mode = ThrottleMode.Shaping)
+
+        complete(sourceOfDetailedMessages)
       }
     }
 }
