@@ -24,6 +24,15 @@ object BackpressuredActor {
 
 /**
   * An actor that publishes StringHasBeenSplit messages and respects backpressure
+  * This actor is meant to be created when using a Source.fromActorPublisher to allow integration between Actors
+  * and Streams.
+  *
+  * The idea is that if you want to push some messages from your existing Actors into a Stream, you would
+  * create a Publisher and feed your existing ActorRef into the Publisher and have the Publisher constantly ask your
+  * Actor for messages which it emits into the Stream (this is not done here). When the Stream is cancelled, only
+  * this Actor dies leaving your Actors intact without causing any disruptions. This is really an intermediate actor
+  * that you use when you want to push data from your Actors into Streams.
+  *
   * Credits: http://doc.akka.io/docs/akka/2.4.10/scala/stream/stream-integrations.html#ActorPublisher
   */
 class BackpressuredActor extends ActorPublisher[StringHasBeenSplit] with ActorLogging {
