@@ -13,6 +13,8 @@ import akka.stream.{ActorMaterializer, ThrottleMode}
 import akka.util.ByteString
 import com.experiments.calvin.{BackpressuredActor, DetailedMessage}
 import com.experiments.calvin.BackpressuredActor.{SplitString, StringHasBeenSplit}
+import de.heikoseeberger.akkasse.ServerSentEvent
+import spray.json.JsonWriter
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -25,7 +27,7 @@ trait ChunkedStreamingRoutes {
   implicit val executionContext: ExecutionContext
   lazy val httpStreamingRoutes =
     streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor ~
-      streamingJsonRoute
+      streamingJsonRoute ~ streamingJsonRouteWithSSE
 
   def streamingTextRoute =
     path("streaming-text") {
@@ -105,4 +107,27 @@ trait ChunkedStreamingRoutes {
         complete(sourceOfDetailedMessages)
       }
     }
+
+  import de.heikoseeberger.akkasse.EventStreamMarshalling._
+  // More information:
+  // https://github.com/hseeberger/akka-sse
+  def streamingJsonRouteWithSSE =
+    path("streaming-sse-json") {
+      get {
+        val sourceOfNumbers = Source(1 to 1000000)
+        val sourceOfDetailedMessagesForSSE = sourceOfNumbers
+          .throttle(elements = 1000, per = 1 second, maximumBurst = 1, mode = ThrottleMode.Shaping)
+          .map(num => DetailedMessage(UUID.randomUUID(), s"Hello $num"))
+          .map(dm =>
+            // long notation is used to pass in implicit JSON marshaller
+            wrapWithServerSentEvent(dm)
+          )
+
+        complete(sourceOfDetailedMessagesForSSE)
+      }
+    }
+
+  private def wrapWithServerSentEvent[T](element: T)(implicit writer: JsonWriter[T]): ServerSentEvent =
+    // Alternatively, use the 2 argument function to override the eventType
+    ServerSentEvent(writer.write(element).compactPrint)
 }

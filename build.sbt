@@ -13,6 +13,7 @@ libraryDependencies ++= {
     akka                        %% "akka-http-core"                       % akkaV,
     akka                        %% "akka-http-experimental"               % akkaV,
     akka                        %% "akka-http-spray-json-experimental"    % akkaV,
+    "de.heikoseeberger"         %% "akka-sse"                             % "1.10.0",
     "ch.qos.logback"            % "logback-classic"                       % "1.1.7",
     "org.codehaus.groovy"       % "groovy"                                % "2.4.7"
   )
