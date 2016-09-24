@@ -14,7 +14,7 @@ import akka.util.ByteString
 import com.experiments.calvin.{BackpressuredActor, DetailedMessage}
 import com.experiments.calvin.BackpressuredActor.{SplitString, StringHasBeenSplit}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
@@ -25,7 +25,7 @@ trait ChunkedStreamingRoutes {
   implicit val executionContext: ExecutionContext
   lazy val httpStreamingRoutes =
     streamingTextRoute ~ actorStreamingTextRoute ~ altActorStreamingTextRoute ~ actorStreamingTextRouteWithLiveActor ~
-      streamingJsonRoute
+      streamingJsonRoute ~ consumingStreamingJson
 
   def streamingTextRoute =
     path("streaming-text") {
@@ -103,6 +103,16 @@ trait ChunkedStreamingRoutes {
             .throttle(elements = 1000, per = 1 second, maximumBurst = 1, mode = ThrottleMode.Shaping)
 
         complete(sourceOfDetailedMessages)
+      }
+    }
+
+  def consumingStreamingJson =
+    path("consuming-streaming-json") {
+      post {
+        entity(asSourceOf[DetailedMessage]) { detailedMessageSource =>
+          val messagesSubmitted: Future[Int] = detailedMessageSource.runFold(0){(acc, _) => acc + 1}
+          complete(messagesSubmitted.map(_.toString))
+        }
       }
     }
 }
