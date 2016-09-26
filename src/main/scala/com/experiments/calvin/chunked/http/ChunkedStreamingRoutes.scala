@@ -138,6 +138,5 @@ trait ChunkedStreamingRoutes {
     }
 
   private def wrapWithServerSentEvent[T](element: T)(implicit writer: JsonWriter[T]): ServerSentEvent =
-    // Alternatively, use the 2 argument function to override the eventType
-    ServerSentEvent(writer.write(element).compactPrint)
+    ServerSentEvent(data = writer.write(element).compactPrint, eventType = "detailedMessage")
 }
