@@ -15,6 +15,7 @@ libraryDependencies ++= {
     akka                        %% "akka-http-core"                       % akkaV,
     akka                        %% "akka-http-experimental"               % akkaV,
     akka                        %% "akka-http-spray-json-experimental"    % akkaV,
+    "de.heikoseeberger"         %% "akka-sse"                             % "1.10.0",
     akka                        %% "akka-http-testkit"                    % akkaV,
     "org.scalactic"             %% "scalactic"                            % scalaTestV,
     "org.scalatest"             %% "scalatest"                            % scalaTestV % "test",
