@@ -22,7 +22,8 @@ object WebsocketStreamsMain extends App {
 
   /*
   many clients -> Merge Hub -> Broadcast Hub -> many clients
-  eg.
+  Visually
+                                                                                                         Akka Streams Flow
                   ________________________________________________________________________________________________________________________________________________________________________________________
   c1 -------->\  |                                                                                                                                                                                        |  /->----------- c1
                \ |                                                                                                                                                                                        | /
