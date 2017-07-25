@@ -43,3 +43,6 @@ WebSocket Clients connect to the Chat-Room via `ws://localhost:9000/ws-chat` and
 
 **Note:** Websocket clients can be found here: [Online WebSocket Tester](https://www.websocket.org/echo.html), [Dark WebSocket Client](https://chrome.google.com/webstore/detail/dark-websocket-terminal/dmogdjmcpfaibncngoolgljgocdabhke), etc.
 
+## Contributions and PRs
+
+Please feel free to send in PRs and contributions and we can review them together and see whether they are small and cohesive enough to fit into the project
