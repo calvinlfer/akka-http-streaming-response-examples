@@ -13,7 +13,7 @@ import akka.stream.{ActorMaterializer, ThrottleMode}
 import akka.util.ByteString
 import com.experiments.calvin.{BackpressuredActor, DetailedMessage}
 import com.experiments.calvin.BackpressuredActor.{SplitString, StringHasBeenSplit}
-import de.heikoseeberger.akkasse.ServerSentEvent
+import de.heikoseeberger.akkasse.scaladsl.model.ServerSentEvent
 import spray.json.JsonWriter
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -118,7 +118,7 @@ trait ChunkedStreamingRoutes {
       }
     }
 
-  import de.heikoseeberger.akkasse.EventStreamMarshalling._
+  import de.heikoseeberger.akkasse.scaladsl.marshalling.EventStreamMarshalling._
   // More information:
   // https://github.com/hseeberger/akka-sse
   def streamingJsonRouteWithSSE =
@@ -138,5 +138,5 @@ trait ChunkedStreamingRoutes {
     }
 
   private def wrapWithServerSentEvent[T](element: T)(implicit writer: JsonWriter[T]): ServerSentEvent =
-    ServerSentEvent(data = writer.write(element).compactPrint, eventType = "detailedMessage")
+    ServerSentEvent(data = writer.write(element).compactPrint, `type` = "detailedMessage")
 }
